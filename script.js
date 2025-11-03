@@ -246,6 +246,9 @@ async function loadData() {
         // Update progress
         updateProgress();
         
+        // Sync all votes to server on page load (silent background sync)
+        syncAllVotesToServer();
+        
         // Show next unvoted visible phrase
         showNextPhrase();
     } catch (err) {
@@ -522,6 +525,45 @@ function addVoteEffects(rating) {
             }
         }, 300);
     }, 1500);
+}
+
+// Sync all votes to server (called on page load)
+function syncAllVotesToServer() {
+    // Only sync if there's at least one vote
+    const hasAnyVotes = userVotes.some(v => v !== null && v !== undefined);
+    if (!hasAnyVotes || !userId) {
+        console.log('No votes to sync or no userId');
+        return;
+    }
+    
+    // Prepare all votes (send 0 for null/undefined)
+    const allVotes = userVotes.map(v => v === null || v === undefined ? '0' : v.toString());
+    
+    // Find the last voted phrase index (or 0 if none)
+    let lastVotedIndex = 0;
+    for (let i = userVotes.length - 1; i >= 0; i--) {
+        if (userVotes[i] !== null && userVotes[i] !== undefined) {
+            lastVotedIndex = i;
+            break;
+        }
+    }
+    
+    const voteData = {
+        action: 'vote',
+        userId: userId,
+        phraseIndex: lastVotedIndex, // Use last voted index (server only needs it for logging)
+        rating: userVotes[lastVotedIndex] || 0,
+        votes: allVotes.join(',')
+    };
+    
+    console.log('Syncing all votes to server on page load:', voteData.votes);
+    
+    // Fire and forget - don't wait for response or show errors
+    submitViaHiddenFormVote(voteData, () => {
+        console.log('✅ All votes synced to server');
+    }, (err) => {
+        console.warn('⚠️ Failed to sync votes on load (non-critical):', err);
+    });
 }
 
 // Submit vote to server (rating 0-5)
