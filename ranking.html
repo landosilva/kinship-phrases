@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - Kinship Phrases</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" href="favicon.svg">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .ranking-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .ranking-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .ranking-header h1 {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .ranking-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .ranking-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ranking-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .ranking-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--primary-color), var(--primary-hover));
+        }
+
+        .ranking-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            min-width: 80px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ranking-item.top-1 .ranking-number {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 3rem;
+        }
+
+        .ranking-item.top-2 .ranking-number {
+            background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.75rem;
+        }
+
+        .ranking-item.top-3 .ranking-number {
+            background: linear-gradient(135deg, #CD7F32, #B87333);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.75rem;
+        }
+
+        .ranking-phrase {
+            flex: 1;
+            font-size: 1.25rem;
+            font-style: italic;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 0 1rem;
+            white-space: pre-line;
+        }
+
+        .ranking-medal {
+            font-size: 2rem;
+            margin-right: 1rem;
+        }
+
+        .loading-ranking {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-secondary);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .ranking-header h1 {
+                font-size: 2rem;
+            }
+
+            .ranking-item {
+                padding: 1rem;
+            }
+
+            .ranking-number {
+                font-size: 2rem;
+                min-width: 60px;
+            }
+
+            .ranking-phrase {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ranking-container">
+        <a href="index.html" class="back-link">← Voltar</a>
+        
+        <div class="ranking-header">
+            <h1>🏆 Ranking de Frases</h1>
+            <p>As frases mais bem avaliadas</p>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Carregando ranking...</p>
+        </div>
+
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div class="ranking-list" id="rankingList" style="display: none;"></div>
+    </div>
+
+    <script>
+        const SPREADSHEET_ID = '1ajnPZy6u6nw-g5GE5ZbortN53JZ9SBkl9RYB9TxMFqs';
+        const CSV_URL_GID_0 = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=0`;
+        const CSV_URL_GID_98642087 = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=98642087`;
+        const CSV_URL_NO_GID = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
+
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const rankingList = document.getElementById('rankingList');
+
+        function showLoading(show) {
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function parseCSV(text) {
+            const rows = [];
+            const lines = text.split('\n');
+            
+            for (let line of lines) {
+                if (line.trim() === '') continue;
+                
+                const row = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        row.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                row.push(current.trim());
+                rows.push(row);
+            }
+            
+            return rows;
+        }
+
+        function toBoolean(value) {
+            if (value === undefined || value === null) return false;
+            const s = String(value).trim().toLowerCase();
+            return s === 'true' || s === '1' || s === 'y' || s === 'yes' || s === 'sim';
+        }
+
+        async function loadRanking() {
+            showLoading(true);
+            error.style.display = 'none';
+            
+            const urls = [CSV_URL_GID_0, CSV_URL_GID_98642087, CSV_URL_NO_GID];
+            let csvText = null;
+            let lastError = null;
+            
+            for (let i = 0; i < urls.length; i++) {
+                try {
+                    const response = await fetch(urls[i]);
+                    if (!response.ok) continue;
+                    
+                    csvText = await response.text();
+                    if (csvText && csvText.trim() !== '') break;
+                } catch (err) {
+                    lastError = err;
+                    continue;
+                }
+            }
+            
+            if (!csvText || csvText.trim() === '') {
+                showError('Não foi possível carregar o ranking.');
+                showLoading(false);
+                return;
+            }
+            
+            try {
+                const rows = parseCSV(csvText);
+                
+                if (rows.length === 0) {
+                    showError('Nenhuma frase encontrada.');
+                    showLoading(false);
+                    return;
+                }
+                
+                let startIndex = 0;
+                if (rows.length > 0 && rows[0].length > 0) {
+                    const firstCell = rows[0][0].toLowerCase().trim();
+                    if (firstCell === 'phrases' || firstCell === 'frases' || firstCell === 'rating' || firstCell === 'hide') {
+                        startIndex = 1;
+                    }
+                }
+                
+                const phrases = rows
+                    .slice(startIndex)
+                    .map((row, idx) => ({
+                        text: row[0] || '',
+                        rating: parseFloat(row[1]) || 0,
+                        index: idx,
+                        hide: toBoolean(row[2])
+                    }))
+                    .filter(phrase => phrase.text && phrase.text.trim() !== '' && !phrase.hide)
+                    .sort((a, b) => b.rating - a.rating); // Sort by rating descending
+                
+                if (phrases.length === 0) {
+                    showError('Nenhuma frase disponível para ranking.');
+                    showLoading(false);
+                    return;
+                }
+                
+                displayRanking(phrases);
+            } catch (err) {
+                console.error('Erro ao processar ranking:', err);
+                showError('Erro ao processar os dados: ' + err.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayRanking(phrases) {
+            rankingList.innerHTML = '';
+            
+            phrases.forEach((phrase, index) => {
+                const item = document.createElement('div');
+                item.className = 'ranking-item';
+                
+                if (index === 0) item.classList.add('top-1');
+                else if (index === 1) item.classList.add('top-2');
+                else if (index === 2) item.classList.add('top-3');
+                
+                const number = document.createElement('div');
+                number.className = 'ranking-number';
+                
+                if (index === 0) number.textContent = '🥇';
+                else if (index === 1) number.textContent = '🥈';
+                else if (index === 2) number.textContent = '🥉';
+                else number.textContent = (index + 1);
+                
+                const phraseText = document.createElement('div');
+                phraseText.className = 'ranking-phrase';
+                phraseText.textContent = `"${phrase.text}"`;
+                
+                item.appendChild(number);
+                item.appendChild(phraseText);
+                rankingList.appendChild(item);
+            });
+            
+            rankingList.style.display = 'flex';
+        }
+
+        // Load ranking on page load
+        document.addEventListener('DOMContentLoaded', loadRanking);
+    </script>
+</body>
+</html>
+
