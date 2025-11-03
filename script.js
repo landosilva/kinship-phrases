@@ -57,13 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Wire control buttons if present
-    const addBtn = document.getElementById('addPhraseBtn');
+    const addBtn = document.getElementById('fabAddPhrase');
     const clearBtn = document.getElementById('clearEntryBtn');
     if (addBtn) {
         addBtn.addEventListener('click', onAddPhraseClick);
     }
     if (clearBtn) {
         clearBtn.addEventListener('click', onClearEntryClick);
+        // Hidden by default; will be shown in showEndMessage()
+        clearBtn.style.display = 'none';
     }
 
     // Initialize progress bar
@@ -553,6 +555,9 @@ function showEndMessage() {
     phraseContainer.style.display = 'none';
     endMessage.style.display = 'block';
     updateProgress(); // Update progress to show 100%
+    // Reveal clear button at the end
+    const clearBtn = document.getElementById('clearEntryBtn');
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
 }
 
 

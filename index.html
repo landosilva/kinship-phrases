@@ -10,11 +10,8 @@
 </head>
 <body>
     <div class="container">
-        <!-- Controls -->
-        <div class="controls" style="display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 12px;">
-            <button id="addPhraseBtn" type="button">add new phrase</button>
-            <button id="clearEntryBtn" type="button">clear entry</button>
-        </div>
+        <!-- Floating Add Button (always visible) -->
+        <button id="fabAddPhrase" class="fab fab-add" title="Add new phrase" aria-label="Add new phrase">+</button>
         <!-- Progress Bar -->
         <div class="progress-container">
             <div class="progress-bar">
@@ -39,6 +36,9 @@
         <!-- End Message -->
         <div id="endMessage" class="end-message" style="display: none;">
             <p>não tem mais frases... por enquanto</p>
+            <div class="end-actions">
+                <button id="clearEntryBtn" type="button" class="btn btn-secondary btn-clear" title="Clear your data and restart">Clear my data</button>
+            </div>
         </div>
     </div>
 

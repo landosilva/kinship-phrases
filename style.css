@@ -47,6 +47,53 @@ body {
     justify-content: center;
 }
 
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    font-size: 2rem;
+    line-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    z-index: 1000;
+}
+
+.fab:hover {
+    transform: translateY(-2px) scale(1.03);
+}
+
+.fab:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.fab-add {
+    background: var(--success-color);
+    color: white;
+}
+
+.fab-add:hover {
+    background: var(--success-hover);
+}
+
+/* End actions (only visible at the end) */
+.end-actions {
+    margin-top: 1rem;
+}
+
+.btn-clear {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+}
+
 /* Progress Bar */
 .progress-container {
     width: 100%;
