@@ -3,7 +3,7 @@ const SPREADSHEET_ID = '1ajnPZy6u6nw-g5GE5ZbortN53JZ9SBkl9RYB9TxMFqs';
 const SHEET_NAME = 'Phrases'; // Nome da aba
 
 // Google Apps Script Web App URL
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzvv1F5j1_XpyN6yCo7CmOhahe1B1Ax9y_eFzSCU2bo8JcuhftRJEXlnxv2W0tIsS4u/exec';
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwLF_51E5zrKdny2apChrSWymQvIcFAkUVO5ER_TShbBHk4WdGjvedyJL_vG9cL2sIj/exec';
 
 // CSV export URL for reading - vamos usar a aba "Frases"
 const CSV_URL_GID_0 = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=0`;
