@@ -532,7 +532,7 @@ async function submitVote(phraseIndex, rating) {
             userId: userId,
             phraseIndex: phraseIndex,
             rating: rating, // 0-5 stars - the current vote
-            votes: allVotes.map(v => v === null || v === undefined ? '' : v.toString()).join(',') // ALL votes as comma-separated string
+            votes: allVotes.map(v => v === null || v === undefined ? '0' : v.toString()).join(',') // ALL votes as comma-separated string; send 0 if no vote
         };
         
         console.log('Submitting vote:', voteData);
