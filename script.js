@@ -20,7 +20,7 @@ const endMessage = document.getElementById('endMessage');
 const progressFill = document.getElementById('progressFill');
 const progressText = document.getElementById('progressText');
 
-let phrases = []; // Array de objetos: {text: string, rating: number, index: number}
+let phrases = []; // Array de objetos: {text: string, rating: number, index: number, hide: boolean}
 let userVotes = []; // Array de votos do usuário atual: [0-5 ou null]
 let userId = null; // ID único do usuário
 let currentPhraseIndex = -1; // Índice da frase atual sendo exibida
@@ -127,10 +127,17 @@ function onClearEntryClick() {
 }
 
 function toggleControls(disabled) {
-    const addBtn = document.getElementById('addPhraseBtn');
+    const addBtn = document.getElementById('fabAddPhrase');
     const clearBtn = document.getElementById('clearEntryBtn');
     if (addBtn) addBtn.disabled = disabled;
     if (clearBtn) clearBtn.disabled = disabled;
+}
+
+// Helpers
+function toBoolean(value) {
+    if (value === undefined || value === null) return false;
+    const s = String(value).trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'y' || s === 'yes' || s === 'sim';
 }
 
 // Load data from Google Sheets
@@ -193,22 +200,23 @@ async function loadData() {
             return;
         }
         
-        // Primeira linha pode ser cabeçalho - pular se for "Phrases" ou "Rating"
+        // Primeira linha pode ser cabeçalho - pular se for "Phrases", "Rating" ou "Hide"
         let startIndex = 0;
         if (rows.length > 0 && rows[0].length > 0) {
             const firstCell = rows[0][0].toLowerCase().trim();
-            if (firstCell === 'phrases' || firstCell === 'frases' || firstCell === 'rating') {
+            if (firstCell === 'phrases' || firstCell === 'frases' || firstCell === 'rating' || firstCell === 'hide') {
                 startIndex = 1; // Pular cabeçalho
             }
         }
         
-        // Extrair frases da coluna A e ratings da coluna B
+        // Extrair frases da coluna A, ratings da coluna B, hide da coluna C
         phrases = rows
             .slice(startIndex) // Pula cabeçalho se houver
             .map((row, idx) => ({
                 text: row[0] || '',
                 rating: parseInt(row[1]) || 0,
-                index: idx
+                index: idx,
+                hide: toBoolean(row[2])
             }))
             .filter(phrase => phrase.text && phrase.text.trim() !== ''); // Remove linhas vazias
         
@@ -229,7 +237,7 @@ async function loadData() {
         // Update progress
         updateProgress();
         
-        // Show next unvoted phrase
+        // Show next unvoted visible phrase
         showNextPhrase();
     } catch (err) {
         console.error('Erro ao processar CSV:', err);
@@ -276,7 +284,7 @@ function showNextPhrase() {
     // Find phrases that haven't been voted yet
     const unvotedPhrases = phrases
         .map((phrase, index) => ({ phrase, index }))
-        .filter(({ index }) => userVotes[index] === null || userVotes[index] === undefined);
+        .filter(({ phrase, index }) => !phrase.hide && (userVotes[index] === null || userVotes[index] === undefined));
     
     if (unvotedPhrases.length === 0) {
         // All phrases have been voted
@@ -443,9 +451,9 @@ function disableInteractions(disable) {
 async function prepareNextPhrase() {
     return new Promise((resolve) => {
         // Find phrases that haven't been voted yet
-        const unvotedPhrases = phrases
-            .map((phrase, index) => ({ phrase, index }))
-            .filter(({ index }) => userVotes[index] === null || userVotes[index] === undefined);
+    const unvotedPhrases = phrases
+        .map((phrase, index) => ({ phrase, index }))
+        .filter(({ phrase, index }) => !phrase.hide && (userVotes[index] === null || userVotes[index] === undefined));
         
         if (unvotedPhrases.length === 0) {
             resolve(null); // No more phrases
@@ -542,8 +550,14 @@ function updateProgress() {
         return;
     }
     
-    const votedCount = userVotes.filter(v => v !== null && v !== undefined).length;
-    const totalCount = phrases.length;
+    // Progress should consider only visible (not hidden) phrases
+    const visibleIndices = phrases
+        .map((p, idx) => ({ p, idx }))
+        .filter(({ p }) => !p.hide)
+        .map(({ idx }) => idx);
+
+    const votedCount = visibleIndices.filter(idx => userVotes[idx] !== null && userVotes[idx] !== undefined).length;
+    const totalCount = visibleIndices.length || 0;
     const percentage = (votedCount / totalCount) * 100;
     
     progressFill.style.width = percentage + '%';
