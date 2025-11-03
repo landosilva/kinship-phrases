@@ -56,6 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
+    // Wire control buttons if present
+    const addBtn = document.getElementById('addPhraseBtn');
+    const clearBtn = document.getElementById('clearEntryBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', onAddPhraseClick);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', onClearEntryClick);
+    }
+
     // Initialize progress bar
     updateProgress();
     
@@ -65,6 +75,61 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load data on page load
     loadData();
 });
+
+// Handle add new phrase
+function onAddPhraseClick() {
+    const phrase = prompt('Digite a nova frase:');
+    if (!phrase) return;
+    const payload = {
+        action: 'append',
+        data: [phrase]
+    };
+    // Disable buttons to prevent double submit
+    toggleControls(true);
+    submitViaHiddenFormVote(payload, () => {
+        console.log('Nova frase adicionada com sucesso');
+        // Reload to reflect new data at the bottom
+        window.location.reload();
+    }, (err) => {
+        console.error('Falha ao adicionar frase:', err);
+        showError('Falha ao adicionar frase. Verifique permissões do Apps Script.');
+        toggleControls(false);
+    });
+}
+
+// Handle clear entry (local + sheet user row)
+function onClearEntryClick() {
+    if (!userId) {
+        initUserData();
+    }
+    const confirmClear = confirm('Isso irá limpar seus votos locais e remover sua entrada no Sheets. Continuar?');
+    if (!confirmClear) return;
+
+    const payload = {
+        action: 'clearUser',
+        userId: userId
+    };
+    toggleControls(true);
+    submitViaHiddenFormVote(payload, () => {
+        try {
+            localStorage.removeItem('userVotes');
+            localStorage.removeItem('userId');
+        } catch (e) {}
+        console.log('Entrada do usuário limpa. Recarregando...');
+        window.location.reload();
+    }, (err) => {
+        console.error('Falha ao limpar entrada:', err);
+        showError('Falha ao limpar entrada. Verifique permissões do Apps Script.');
+        toggleControls(false);
+    });
+}
+
+function toggleControls(disabled) {
+    const addBtn = document.getElementById('addPhraseBtn');
+    const clearBtn = document.getElementById('clearEntryBtn');
+    if (addBtn) addBtn.disabled = disabled;
+    if (clearBtn) clearBtn.disabled = disabled;
+}
 
 // Load data from Google Sheets
 async function loadData() {
