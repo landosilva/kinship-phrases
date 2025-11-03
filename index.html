@@ -10,7 +10,8 @@
 </head>
 <body>
     <div class="container">
-        <!-- Floating Add Button (always visible) -->
+        <!-- Floating Action Buttons (always visible) -->
+        <button id="fabRefreshData" class="fab fab-refresh" title="Refresh data" aria-label="Refresh data">⟳</button>
         <button id="fabAddPhrase" class="fab fab-add" title="Add new phrase" aria-label="Add new phrase">+</button>
         <!-- Progress Bar -->
         <div class="progress-container">
@@ -36,9 +37,6 @@
         <!-- End Message -->
         <div id="endMessage" class="end-message" style="display: none;">
             <p>não tem mais frases... por enquanto</p>
-            <div class="end-actions">
-                <button id="clearEntryBtn" type="button" class="btn btn-secondary btn-clear" title="Clear your data and restart">Clear my data</button>
-            </div>
         </div>
     </div>
 

@@ -84,14 +84,14 @@ body {
     background: var(--success-hover);
 }
 
-/* End actions (only visible at the end) */
-.end-actions {
-    margin-top: 1rem;
+.fab-refresh {
+    background: var(--primary-color);
+    color: white;
+    bottom: 96px; /* Position above the add button (56px height + 8px gap + 32px) */
 }
 
-.btn-clear {
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
+.fab-refresh:hover {
+    background: var(--primary-hover);
 }
 
 /* Progress Bar */

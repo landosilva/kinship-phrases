@@ -58,14 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Wire control buttons if present
     const addBtn = document.getElementById('fabAddPhrase');
-    const clearBtn = document.getElementById('clearEntryBtn');
+    const refreshBtn = document.getElementById('fabRefreshData');
     if (addBtn) {
         addBtn.addEventListener('click', onAddPhraseClick);
     }
-    if (clearBtn) {
-        clearBtn.addEventListener('click', onClearEntryClick);
-        // Hidden by default; will be shown in showEndMessage()
-        clearBtn.style.display = 'none';
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', onRefreshDataClick);
     }
 
     // Initialize progress bar
@@ -99,38 +97,17 @@ function onAddPhraseClick() {
     });
 }
 
-// Handle clear entry (local + sheet user row)
-function onClearEntryClick() {
-    if (!userId) {
-        initUserData();
-    }
-    const confirmClear = confirm('Isso irá limpar seus votos locais e remover sua entrada no Sheets. Continuar?');
-    if (!confirmClear) return;
-
-    const payload = {
-        action: 'clearUser',
-        userId: userId
-    };
-    toggleControls(true);
-    submitViaHiddenFormVote(payload, () => {
-        try {
-            localStorage.removeItem('userVotes');
-            localStorage.removeItem('userId');
-        } catch (e) {}
-        console.log('Entrada do usuário limpa. Recarregando...');
-        window.location.reload();
-    }, (err) => {
-        console.error('Falha ao limpar entrada:', err);
-        showError('Falha ao limpar entrada. Verifique permissões do Apps Script.');
-        toggleControls(false);
-    });
+// Handle refresh data (reload from server)
+function onRefreshDataClick() {
+    // Simply reload the page to refresh data from Google Sheets
+    window.location.reload();
 }
 
 function toggleControls(disabled) {
     const addBtn = document.getElementById('fabAddPhrase');
-    const clearBtn = document.getElementById('clearEntryBtn');
+    const refreshBtn = document.getElementById('fabRefreshData');
     if (addBtn) addBtn.disabled = disabled;
-    if (clearBtn) clearBtn.disabled = disabled;
+    if (refreshBtn) refreshBtn.disabled = disabled;
 }
 
 // Helpers
@@ -620,9 +597,6 @@ function showEndMessage() {
     phraseContainer.style.display = 'none';
     endMessage.style.display = 'block';
     updateProgress(); // Update progress to show 100%
-    // Reveal clear button at the end
-    const clearBtn = document.getElementById('clearEntryBtn');
-    if (clearBtn) clearBtn.style.display = 'inline-flex';
 }
 
 
