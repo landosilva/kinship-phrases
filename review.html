@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Votes - Kinship Phrases</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" href="favicon.svg">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .review-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .review-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .review-header h1 {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .review-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .review-item {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .review-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .review-phrase {
+            font-size: 1.5rem;
+            font-style: italic;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            white-space: pre-line;
+            text-align: center;
+        }
+
+        .review-stars {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .review-star {
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            user-select: none;
+        }
+
+        .review-star:hover {
+            transform: scale(1.2);
+        }
+
+        .review-star.filled {
+            opacity: 1;
+        }
+
+        .review-star.empty {
+            opacity: 0.3;
+        }
+
+        .review-no-vote {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 1rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        .save-status {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success-color);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 2000;
+        }
+
+        .save-status.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .review-header h1 {
+                font-size: 2rem;
+            }
+
+            .review-item {
+                padding: 1.5rem;
+            }
+
+            .review-phrase {
+                font-size: 1.25rem;
+            }
+
+            .review-star {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="review-container">
+        <a href="index.html" class="back-link">← Voltar</a>
+        
+        <div class="review-header">
+            <h1>✏️ Review Votes</h1>
+            <p>Reveja e altere seus votos</p>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Carregando...</p>
+        </div>
+
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div class="review-list" id="reviewList" style="display: none;"></div>
+
+        <div class="save-status" id="saveStatus">✓ Voto salvo!</div>
+    </div>
+
+    <script>
+        const SPREADSHEET_ID = '1ajnPZy6u6nw-g5GE5ZbortN53JZ9SBkl9RYB9TxMFqs';
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx8ZLe2vqROfuMoImCXfHDFzfksfDi3h6oZkfmCx2bP-6gYLRjKNIYSLkHGgr2j-Sw/exec';
+        const CSV_URL_GID_0 = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=0`;
+        const CSV_URL_GID_98642087 = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=98642087`;
+        const CSV_URL_NO_GID = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
+
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const reviewList = document.getElementById('reviewList');
+        const saveStatus = document.getElementById('saveStatus');
+
+        let phrases = [];
+        let userVotes = [];
+        let userId = null;
+
+        function showLoading(show) {
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function showSaveStatus() {
+            saveStatus.classList.add('show');
+            setTimeout(() => {
+                saveStatus.classList.remove('show');
+            }, 2000);
+        }
+
+        function initUserData() {
+            userId = localStorage.getItem('userId');
+            if (!userId) {
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('userId', userId);
+            }
+            
+            const savedVotes = localStorage.getItem('userVotes');
+            if (savedVotes) {
+                userVotes = JSON.parse(savedVotes);
+            } else {
+                userVotes = [];
+            }
+        }
+
+        function parseCSV(text) {
+            const rows = [];
+            const lines = text.split('\n');
+            
+            for (let line of lines) {
+                if (line.trim() === '') continue;
+                
+                const row = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        row.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                row.push(current.trim());
+                rows.push(row);
+            }
+            
+            return rows;
+        }
+
+        function toBoolean(value) {
+            if (value === undefined || value === null) return false;
+            const s = String(value).trim().toLowerCase();
+            return s === 'true' || s === '1' || s === 'y' || s === 'yes' || s === 'sim';
+        }
+
+        async function loadData() {
+            showLoading(true);
+            error.style.display = 'none';
+            
+            const urls = [CSV_URL_GID_0, CSV_URL_GID_98642087, CSV_URL_NO_GID];
+            let csvText = null;
+            let lastError = null;
+            
+            for (let i = 0; i < urls.length; i++) {
+                try {
+                    const response = await fetch(urls[i]);
+                    if (!response.ok) continue;
+                    
+                    csvText = await response.text();
+                    if (csvText && csvText.trim() !== '') break;
+                } catch (err) {
+                    lastError = err;
+                    continue;
+                }
+            }
+            
+            if (!csvText || csvText.trim() === '') {
+                showError('Não foi possível carregar as frases.');
+                showLoading(false);
+                return;
+            }
+            
+            try {
+                const rows = parseCSV(csvText);
+                
+                if (rows.length === 0) {
+                    showError('Nenhuma frase encontrada.');
+                    showLoading(false);
+                    return;
+                }
+                
+                let startIndex = 0;
+                if (rows.length > 0 && rows[0].length > 0) {
+                    const firstCell = rows[0][0].toLowerCase().trim();
+                    if (firstCell === 'phrases' || firstCell === 'frases' || firstCell === 'rating' || firstCell === 'hide') {
+                        startIndex = 1;
+                    }
+                }
+                
+                phrases = rows
+                    .slice(startIndex)
+                    .map((row, idx) => ({
+                        text: row[0] || '',
+                        rating: parseFloat(row[1]) || 0,
+                        index: idx,
+                        hide: toBoolean(row[2])
+                    }))
+                    .filter(phrase => phrase.text && phrase.text.trim() !== '' && !phrase.hide);
+                
+                // Sync userVotes size with phrases
+                if (userVotes.length > phrases.length) {
+                    userVotes = userVotes.slice(0, phrases.length);
+                }
+                while (userVotes.length < phrases.length) {
+                    userVotes.push(null);
+                }
+                
+                displayReview();
+            } catch (err) {
+                console.error('Erro ao processar:', err);
+                showError('Erro ao processar os dados: ' + err.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayReview() {
+            reviewList.innerHTML = '';
+            
+            phrases.forEach((phrase, phraseIndex) => {
+                const item = document.createElement('div');
+                item.className = 'review-item';
+                
+                const phraseDiv = document.createElement('div');
+                phraseDiv.className = 'review-phrase';
+                phraseDiv.textContent = `"${phrase.text}"`;
+                item.appendChild(phraseDiv);
+                
+                const starsDiv = document.createElement('div');
+                starsDiv.className = 'review-stars';
+                
+                const currentRating = userVotes[phraseIndex] || 0;
+                
+                for (let i = 1; i <= 5; i++) {
+                    const star = document.createElement('span');
+                    star.className = 'review-star';
+                    star.textContent = i <= currentRating ? '⭐️' : '☆';
+                    star.classList.add(i <= currentRating ? 'filled' : 'empty');
+                    
+                    star.addEventListener('click', () => {
+                        updateVote(phraseIndex, i);
+                    });
+                    
+                    star.addEventListener('mouseenter', () => {
+                        highlightStars(starsDiv, i);
+                    });
+                    
+                    starsDiv.appendChild(star);
+                }
+                
+                starsDiv.addEventListener('mouseleave', () => {
+                    resetStars(starsDiv, currentRating);
+                });
+                
+                item.appendChild(starsDiv);
+                reviewList.appendChild(item);
+            });
+            
+            reviewList.style.display = 'flex';
+        }
+
+        function highlightStars(starsDiv, rating) {
+            const stars = starsDiv.querySelectorAll('.review-star');
+            stars.forEach((star, index) => {
+                const starNum = index + 1;
+                star.textContent = starNum <= rating ? '⭐️' : '☆';
+                star.classList.toggle('filled', starNum <= rating);
+                star.classList.toggle('empty', starNum > rating);
+            });
+        }
+
+        function resetStars(starsDiv, rating) {
+            const stars = starsDiv.querySelectorAll('.review-star');
+            stars.forEach((star, index) => {
+                const starNum = index + 1;
+                star.textContent = starNum <= rating ? '⭐️' : '☆';
+                star.classList.toggle('filled', starNum <= rating);
+                star.classList.toggle('empty', starNum > rating);
+            });
+        }
+
+        function updateVote(phraseIndex, rating) {
+            // Update local vote
+            userVotes[phraseIndex] = rating;
+            localStorage.setItem('userVotes', JSON.stringify(userVotes));
+            
+            // Update display
+            const items = reviewList.querySelectorAll('.review-item');
+            const starsDiv = items[phraseIndex].querySelector('.review-stars');
+            resetStars(starsDiv, rating);
+            
+            // Show save status
+            showSaveStatus();
+            
+            // Submit to server
+            submitVote(phraseIndex, rating);
+        }
+
+        function submitVote(phraseIndex, rating) {
+            const allVotes = [...userVotes];
+            while (allVotes.length < phrases.length) {
+                allVotes.push(null);
+            }
+            allVotes[phraseIndex] = rating;
+            
+            const voteData = {
+                action: 'vote',
+                userId: userId,
+                phraseIndex: phraseIndex,
+                rating: rating,
+                votes: allVotes.map(v => v === null || v === undefined ? '0' : v.toString()).join(',')
+            };
+            
+            submitViaHiddenFormVote(voteData, () => {
+                console.log('Vote updated successfully');
+            }, (err) => {
+                console.error('Error updating vote:', err);
+            });
+        }
+
+        function submitViaHiddenFormVote(voteData, resolve, reject) {
+            const payload = JSON.stringify(voteData);
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = WEB_APP_URL;
+            form.style.display = 'none';
+            form.enctype = 'application/x-www-form-urlencoded';
+            form.acceptCharset = 'UTF-8';
+            
+            const iframe = document.createElement('iframe');
+            const iframeName = 'voteFrame_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            iframe.name = iframeName;
+            iframe.style.display = 'none';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            iframe.style.position = 'absolute';
+            iframe.style.top = '-9999px';
+            iframe.style.left = '-9999px';
+            
+            form.target = iframeName;
+            
+            const dataInput = document.createElement('input');
+            dataInput.type = 'hidden';
+            dataInput.name = 'postData';
+            dataInput.value = payload;
+            
+            form.appendChild(dataInput);
+            document.body.appendChild(iframe);
+            document.body.appendChild(form);
+            
+            let isComplete = false;
+            let resolved = false;
+            
+            const completeTimeout = setTimeout(() => {
+                if (!isComplete && !resolved) {
+                    isComplete = true;
+                    resolved = true;
+                    cleanup();
+                    if (resolve) resolve();
+                }
+            }, 3000);
+            
+            iframe.onload = function() {
+                if (!isComplete && !resolved) {
+                    isComplete = true;
+                    resolved = true;
+                    clearTimeout(completeTimeout);
+                    cleanup();
+                    if (resolve) resolve();
+                }
+            };
+            
+            iframe.onerror = function() {
+                if (!isComplete && !resolved) {
+                    isComplete = true;
+                    resolved = true;
+                    clearTimeout(completeTimeout);
+                    cleanup();
+                    if (resolve) resolve();
+                }
+            };
+            
+            function cleanup() {
+                setTimeout(() => {
+                    try {
+                        if (form.parentNode) {
+                            document.body.removeChild(form);
+                        }
+                        if (iframe.parentNode) {
+                            document.body.removeChild(iframe);
+                        }
+                    } catch (e) {
+                        console.warn('Cleanup error:', e);
+                    }
+                }, 1000);
+            }
+            
+            try {
+                form.submit();
+            } catch (err) {
+                if (!resolved) {
+                    resolved = true;
+                    clearTimeout(completeTimeout);
+                    cleanup();
+                    if (reject) reject(err);
+                }
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initUserData();
+            loadData();
+        });
+    </script>
+</body>
+</html>
+

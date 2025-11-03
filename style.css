@@ -549,7 +549,8 @@ tbody tr:last-child td {
     gap: 1rem;
 }
 
-.btn-ranking {
+.btn-ranking,
+.btn-review {
     padding: 1rem 2rem;
     font-size: 1.25rem;
     font-weight: 600;
@@ -558,14 +559,27 @@ tbody tr:last-child td {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     transition: all 0.3s ease;
+}
+
+.btn-ranking {
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
 .btn-ranking:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
     background: var(--primary-hover);
+}
+
+.btn-review {
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+}
+
+.btn-review:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
+    background: #4b5563;
 }
 
 /* Vote Effects */
