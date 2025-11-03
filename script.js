@@ -58,12 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Wire control buttons if present
     const addBtn = document.getElementById('fabAddPhrase');
-    const refreshBtn = document.getElementById('fabRefreshData');
     if (addBtn) {
         addBtn.addEventListener('click', onAddPhraseClick);
-    }
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', onRefreshDataClick);
     }
 
     // Initialize progress bar
@@ -97,17 +93,9 @@ function onAddPhraseClick() {
     });
 }
 
-// Handle refresh data (reload from server)
-function onRefreshDataClick() {
-    // Simply reload the page to refresh data from Google Sheets
-    window.location.reload();
-}
-
 function toggleControls(disabled) {
     const addBtn = document.getElementById('fabAddPhrase');
-    const refreshBtn = document.getElementById('fabRefreshData');
     if (addBtn) addBtn.disabled = disabled;
-    if (refreshBtn) refreshBtn.disabled = disabled;
 }
 
 // Helpers
