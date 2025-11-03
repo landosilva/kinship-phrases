@@ -295,21 +295,38 @@
                     }
                 }
                 
-                phrases = rows
+                // First, map all phrases with their original sheet indices (before filtering)
+                const allPhrases = rows
                     .slice(startIndex)
-                    .map((row, idx) => ({
-                        text: row[0] || '',
-                        rating: parseFloat(row[1]) || 0,
-                        index: idx,
-                        hide: toBoolean(row[2])
-                    }))
-                    .filter(phrase => phrase.text && phrase.text.trim() !== '' && !phrase.hide);
+                    .map((row, idx) => {
+                        const text = (row[0] || '').trim();
+                        const hide = toBoolean(row[2]);
+                        return {
+                            text: text,
+                            rating: parseFloat(row[1]) || 0,
+                            sheetIndex: idx, // Original index in sheet (matching vote array)
+                            hide: hide
+                        };
+                    });
                 
-                // Sync userVotes size with phrases
-                if (userVotes.length > phrases.length) {
-                    userVotes = userVotes.slice(0, phrases.length);
+                console.log('All phrases before filter:', allPhrases.length);
+                console.log('Hidden phrases:', allPhrases.filter(p => p.hide).map(p => ({ text: p.text, hide: p.hide })));
+                
+                // Filter out empty and hidden phrases, but keep sheetIndex for vote lookup
+                phrases = allPhrases.filter(phrase => {
+                    const isNotEmpty = phrase.text && phrase.text.trim() !== '';
+                    const isNotHidden = !phrase.hide;
+                    return isNotEmpty && isNotHidden;
+                });
+                
+                console.log('Visible phrases after filter:', phrases.length);
+                
+                // Sync userVotes size with ALL phrases (including hidden) - based on sheet row count
+                const totalSheetRows = allPhrases.length;
+                if (userVotes.length > totalSheetRows) {
+                    userVotes = userVotes.slice(0, totalSheetRows);
                 }
-                while (userVotes.length < phrases.length) {
+                while (userVotes.length < totalSheetRows) {
                     userVotes.push(null);
                 }
                 
@@ -325,7 +342,7 @@
         function displayReview() {
             reviewList.innerHTML = '';
             
-            phrases.forEach((phrase, phraseIndex) => {
+            phrases.forEach((phrase) => {
                 const item = document.createElement('div');
                 item.className = 'review-item';
                 
@@ -337,7 +354,9 @@
                 const starsDiv = document.createElement('div');
                 starsDiv.className = 'review-stars';
                 
-                const currentRating = userVotes[phraseIndex] || 0;
+                // Use sheetIndex to get the correct vote from userVotes array
+                const sheetIndex = phrase.sheetIndex;
+                const currentRating = (userVotes[sheetIndex] !== null && userVotes[sheetIndex] !== undefined) ? userVotes[sheetIndex] : 0;
                 
                 for (let i = 1; i <= 5; i++) {
                     const star = document.createElement('span');
@@ -346,7 +365,7 @@
                     star.classList.add(i <= currentRating ? 'filled' : 'empty');
                     
                     star.addEventListener('click', () => {
-                        updateVote(phraseIndex, i);
+                        updateVote(phrase.sheetIndex, i);
                     });
                     
                     star.addEventListener('mouseenter', () => {
@@ -387,34 +406,40 @@
             });
         }
 
-        function updateVote(phraseIndex, rating) {
-            // Update local vote
-            userVotes[phraseIndex] = rating;
+        function updateVote(sheetIndex, rating) {
+            // Update local vote using sheet index
+            userVotes[sheetIndex] = rating;
             localStorage.setItem('userVotes', JSON.stringify(userVotes));
             
-            // Update display
+            // Update display - find the item by sheetIndex
             const items = reviewList.querySelectorAll('.review-item');
-            const starsDiv = items[phraseIndex].querySelector('.review-stars');
-            resetStars(starsDiv, rating);
+            const phraseIndex = phrases.findIndex(p => p.sheetIndex === sheetIndex);
+            if (phraseIndex >= 0 && items[phraseIndex]) {
+                const starsDiv = items[phraseIndex].querySelector('.review-stars');
+                resetStars(starsDiv, rating);
+            }
             
             // Show save status
             showSaveStatus();
             
             // Submit to server
-            submitVote(phraseIndex, rating);
+            submitVote(sheetIndex, rating);
         }
 
-        function submitVote(phraseIndex, rating) {
+        function submitVote(sheetIndex, rating) {
+            // Ensure userVotes array is large enough for all sheet rows
             const allVotes = [...userVotes];
-            while (allVotes.length < phrases.length) {
+            // Find the maximum sheetIndex from all phrases to determine needed size
+            const maxSheetIndex = Math.max(...phrases.map(p => p.sheetIndex), sheetIndex);
+            while (allVotes.length <= maxSheetIndex) {
                 allVotes.push(null);
             }
-            allVotes[phraseIndex] = rating;
+            allVotes[sheetIndex] = rating;
             
             const voteData = {
                 action: 'vote',
                 userId: userId,
-                phraseIndex: phraseIndex,
+                phraseIndex: sheetIndex,
                 rating: rating,
                 votes: allVotes.map(v => v === null || v === undefined ? '0' : v.toString()).join(',')
             };
