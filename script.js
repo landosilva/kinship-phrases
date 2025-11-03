@@ -220,10 +220,19 @@ async function loadData() {
             }))
             .filter(phrase => phrase.text && phrase.text.trim() !== ''); // Remove linhas vazias
         
-        // Expandir userVotes se necessário (se novas frases foram adicionadas)
+        // Sincronizar tamanho do cache local com a quantidade de frases
+        // 1) Truncar votos extras (caso a planilha tenha menos frases agora)
+        if (userVotes.length > phrases.length) {
+            userVotes = userVotes.slice(0, phrases.length);
+        }
+        // 2) Expandir se necessário (novas frases adicionadas)
         while (userVotes.length < phrases.length) {
             userVotes.push(null); // null significa que ainda não votou
         }
+        // Persistir sincronização
+        try {
+            localStorage.setItem('userVotes', JSON.stringify(userVotes));
+        } catch (e) {}
         
         console.log('Frases encontradas:', phrases.length);
         console.log('User votes:', userVotes);
