@@ -511,6 +511,7 @@ tbody tr:last-child td {
     line-height: 1.5;
     padding: 0 1rem;
     word-wrap: break-word;
+    white-space: pre-line; /* Preserve line breaks while allowing wrapping */
 }
 
 .stars-container {
